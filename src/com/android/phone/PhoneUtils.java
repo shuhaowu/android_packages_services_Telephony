@@ -3467,6 +3467,10 @@ public class PhoneUtils {
                     subscription), false);
         }
 
+        static int flipAction(Context context) {
+            return Integer.parseInt(getPrefs(context).getString("button_flip_while_ringing", "0"));
+        }
+
         /* misc. UI and behaviour preferences */
         static boolean showInCallEvents(Context context) {
             return showInCallEvents(context, -1);

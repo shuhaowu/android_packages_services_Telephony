@@ -39,6 +39,8 @@ import android.content.res.Resources;
 import android.content.res.Resources.NotFoundException;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteException;
+import android.hardware.Sensor;
+import android.hardware.SensorManager;
 import android.media.AudioManager;
 import android.media.RingtoneManager;
 import android.net.Uri;
@@ -188,6 +190,7 @@ public class CallFeaturesSetting extends PreferenceActivity
     private static final String BUTTON_RETRY_KEY       = "button_auto_retry_key";
 
     private static final String BUTTON_INCOMING_CALL_STYLE = "button_incoming_call_style";
+    private static final String BUTTON_FLIP_WHILE_RINGING = "button_flip_while_ringing";
 
     private static final String BUTTON_PROXIMITY_KEY   = "button_proximity_key";
     private static final String BUTTON_IPPREFIX_KEY = "button_ipprefix_key";
@@ -331,6 +334,7 @@ public class CallFeaturesSetting extends PreferenceActivity
     private PreferenceScreen mEmergencyCall;
     protected CheckBoxPreference mVibrateWhenRinging;
     private ListPreference mIncomingCallStyle;
+    private ListPreference mFlipWhileRinging;
     /** Whether dialpad plays DTMF tone or not. */
     private CheckBoxPreference mPlayDtmfTone;
     private CheckBoxPreference mButtonAutoRetry;
@@ -729,6 +733,8 @@ public class CallFeaturesSetting extends PreferenceActivity
             int index = mCallRecordingFormat.findIndexOfValue((String) objValue);
             Settings.System.putInt(getContentResolver(), Settings.System.CALL_RECORDING_FORMAT, value);
             mCallRecordingFormat.setSummary(mCallRecordingFormat.getEntries()[index]);
+        } else if (preference == mFlipWhileRinging) {
+            updateFlipSummary(Integer.parseInt((String) objValue));
         }
         // always let the preference setting proceed.
         return true;
@@ -786,6 +792,10 @@ public class CallFeaturesSetting extends PreferenceActivity
 
         log("startSubActivity: starting requested subactivity");
         super.startActivityForResult(intent, requestCode);
+    }
+
+    private void updateFlipSummary(int index) {
+        mFlipWhileRinging.setSummary(getString(R.string.flip_while_ringing_summary, mFlipWhileRinging.getEntries()[index]));
     }
 
     private void switchToPreviousVoicemailProvider() {
@@ -1656,6 +1666,9 @@ public class CallFeaturesSetting extends PreferenceActivity
         onCreateVoicemailPrefs(icicle);
         onCreateRingtonePrefs(prefSet);
 
+        mVibrateWhenRinging = (CheckBoxPreference) findPreference(BUTTON_VIBRATE_ON_RING);
+        mFlipWhileRinging = (ListPreference) findPreference(BUTTON_FLIP_WHILE_RINGING);
+
         mPlayDtmfTone = (CheckBoxPreference) findPreference(BUTTON_PLAY_DTMF_TONE);
 
         mButtonDTMF = (ListPreference) findPreference(BUTTON_DTMF_KEY);
@@ -1683,6 +1696,19 @@ public class CallFeaturesSetting extends PreferenceActivity
                 mIPPrefix.setSummary(R.string.ipcall_sub_summery);
             } else {
                 mIPPrefix.setSummary(ip_prefix);
+            }
+        }
+
+        if (mFlipWhileRinging != null) {
+            SensorManager sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+            Sensor proximity = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY);
+            Sensor gravity = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
+            if (proximity == null || gravity == null) {
+                prefSet.removePreference(mFlipWhileRinging);
+                mFlipWhileRinging = null;
+            } else {
+                mFlipWhileRinging.setOnPreferenceChangeListener(this);
+                updateFlipSummary(Integer.parseInt(mFlipWhileRinging.getValue()));
             }
         }
 
